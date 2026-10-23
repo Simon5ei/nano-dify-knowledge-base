@@ -25,12 +25,45 @@
 
 ## 快速开始
 
+### 方式一：本地运行
+
 ```bash
 pip install -r backend/requirements.txt
 python run.py
 ```
 
 打开 <http://127.0.0.1:8000> 即可进入管理界面；API 文档见 <http://127.0.0.1:8000/docs>。
+
+### 方式二：Docker 部署（推荐）
+
+```bash
+# 一键构建并启动
+docker compose up -d --build
+
+# 查看日志 / 停止
+docker compose logs -f
+docker compose down
+```
+
+打开 <http://127.0.0.1:8080> 进入管理界面（compose 默认映射宿主机 `8080` → 容器 `8000`，
+如 8000 空闲可自行改回 `8000:8000`）。
+
+数据持久化在 named volume `nano-dify-data`（SQLite 库 + 上传文件），容器重建不丢数据；
+`docker compose down -v` 会连数据一起删除。
+
+不使用 compose 也可以直接构建镜像：
+
+```bash
+docker build -t nano-dify-knowledge-lib .
+docker run -d --name nano-dify-knowledge-lib -p 8080:8000 \
+  -v nano-dify-data:/app/backend/data nano-dify-knowledge-lib
+```
+
+网络受限环境下可用构建参数指定 PyPI 镜像加速：
+
+```bash
+docker compose build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+```
 
 ### 使用真实 Embedding 服务（可选）
 

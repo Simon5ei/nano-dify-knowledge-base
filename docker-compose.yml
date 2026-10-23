@@ -1,0 +1,21 @@
+services:
+  nano-dify-knowledge-lib:
+    build: .
+    container_name: nano-dify-knowledge-lib
+    ports:
+      - "8080:8000"   # 宿主机 8080 -> 容器 8000（避开本机 8000 占用）
+    environment:
+      # 可选：配置后使用真实语义向量（OpenAI 兼容接口）
+      # EMBEDDING_BASE_URL: "https://api.openai.com/v1"
+      # EMBEDDING_API_KEY: "sk-..."
+      # EMBEDDING_MODEL: "text-embedding-3-small"
+      # 可选：分段默认参数
+      # DEFAULT_CHUNK_SIZE: "500"
+      # DEFAULT_CHUNK_OVERLAP: "50"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - nano-dify-data:/app/backend/data   # SQLite 库与上传文件持久化
+    restart: unless-stopped
+
+volumes:
+  nano-dify-data:
