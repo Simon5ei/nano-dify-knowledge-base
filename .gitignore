@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 运行数据（SQLite 库与上传文件，不入库）
+backend/data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

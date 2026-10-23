@@ -1,0 +1,15 @@
+Nano Dify Knowledge Lib
+Copyright 2026 Simon5ei
+
+本项目是一个独立实现的迷你知识库系统，其产品概念（知识库 / 文档 /
+分段 / 召回测试）参考了开源项目 Dify（https://github.com/langgenius/dify）
+的设计思路。
+
+本仓库不包含任何 Dify 的源代码。所有代码均为独立编写，并以
+Apache License 2.0 发布（见 LICENSE 文件）。
+
+Dify 由 LangGenius, Inc. 版权所有，其官方许可证全文收录于
+licenses/LICENSE-dify，仅作归属说明与合规参考之用。
+
+Dify is a trademark of LangGenius, Inc. This project is not affiliated
+with, endorsed by, or sponsored by LangGenius, Inc.
