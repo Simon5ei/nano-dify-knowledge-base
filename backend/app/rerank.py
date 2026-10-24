@@ -4,15 +4,15 @@
 """
 import httpx
 
-from . import config
+from . import settings_store
 
 
 def rerank_available() -> bool:
-    return bool(config.RERANK_BASE_URL and config.RERANK_API_KEY)
+    return bool(settings_store.get("RERANK_BASE_URL") and settings_store.get("RERANK_API_KEY"))
 
 
 def rerank_provider_name() -> str:
-    return config.RERANK_MODEL if rerank_available() else "local-keyword"
+    return settings_store.get("RERANK_MODEL") if rerank_available() else "local-keyword"
 
 
 def rerank(query: str, documents: list[str], top_n: int) -> list[tuple[int, float]]:
@@ -27,11 +27,11 @@ def rerank(query: str, documents: list[str], top_n: int) -> list[tuple[int, floa
 
 def _rerank_remote(query: str, documents: list[str], top_n: int) -> list[tuple[int, float]]:
     """Jina / Cohere v2 / SiliconFlow / TEI 兼容的 /rerank 协议。"""
-    url = config.RERANK_BASE_URL.rstrip("/") + "/rerank"
+    url = settings_store.get("RERANK_BASE_URL").rstrip("/") + "/rerank"
     resp = httpx.post(
         url,
-        headers={"Authorization": f"Bearer {config.RERANK_API_KEY}"},
-        json={"model": config.RERANK_MODEL, "query": query, "documents": documents, "top_n": top_n},
+        headers={"Authorization": f"Bearer {settings_store.get('RERANK_API_KEY')}"},
+        json={"model": settings_store.get("RERANK_MODEL"), "query": query, "documents": documents, "top_n": top_n},
         timeout=60,
     )
     resp.raise_for_status()

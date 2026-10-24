@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS segments (
 );
 CREATE INDEX IF NOT EXISTS idx_segments_dataset ON segments(dataset_id);
 CREATE INDEX IF NOT EXISTS idx_segments_document ON segments(document_id);
+
+-- 界面可改的运行时配置（优先级高于环境变量）
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT DEFAULT ''
+);
 """
 
 

@@ -67,7 +67,11 @@ docker compose build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn
 
 ### 接入 Embedding 服务（可选）
 
-任何 **OpenAI 兼容**（带 `/embeddings` 接口）的服务都能直接用，三个环境变量即可：
+**推荐：在界面配置**。侧边栏底部「⚙ 模型设置」中填写 Base URL / API Key / 模型名，
+保存立即生效并持久化到数据库（密钥脱敏展示、不回传明文），还可用「测试连接」验证连通性。
+界面配置的优先级高于环境变量。
+
+也可以用环境变量预置（任何 **OpenAI 兼容**、带 `/embeddings` 接口的服务都行）：
 
 | 环境变量 | 说明 | 示例 |
 |---|---|---|
@@ -113,6 +117,7 @@ Rerank 是两阶段检索的第二步：先向量粗排取 `3 × TopK` 候选，
 
 配置后在管理界面「召回测试」勾选 **Rerank** 即可对比效果：每条结果会同时显示
 rerank 得分和原始向量得分。未配置远程服务时勾选 Rerank 会用本地关键词重叠打分兜底（`local-keyword`）。
+Rerank 同样支持在「⚙ 模型设置」里直接配置。
 
 Docker 部署时在 `docker-compose.yml` 的 `environment` 段取消对应注释即可，改完执行：
 
@@ -124,6 +129,8 @@ docker compose up -d
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET/PUT | `/api/settings` | 模型设置读取（密钥脱敏）/ 保存 |
+| POST | `/api/settings/test` | Embedding / Rerank 连接测试 |
 | GET/POST | `/api/datasets` | 知识库列表 / 新建 |
 | GET/PATCH/DELETE | `/api/datasets/{id}` | 详情 / 更新 / 删除 |
 | GET | `/api/datasets/{id}/documents` | 文档列表 |

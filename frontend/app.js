@@ -288,7 +288,74 @@ $("#btnDeleteDataset").onclick = async () => {
 loadDatasets();
 
 /* 侧边栏底部展示当前 Embedding / Rerank 提供方 */
-api.get("/api/health").then((h) => {
-  $("#providerInfo").innerHTML =
-    `Embedding：${esc(h.embedding_provider)}<br>Rerank：${esc(h.rerank_provider)}`;
-});
+function refreshProviderInfo() {
+  api.get("/api/health").then((h) => {
+    $("#providerInfo").innerHTML =
+      `Embedding：${esc(h.embedding_provider)}<br>Rerank：${esc(h.rerank_provider)}`;
+  });
+}
+refreshProviderInfo();
+
+/* ---------- 模型设置 ---------- */
+const SETTING_FIELDS = {
+  setEmbBase: "EMBEDDING_BASE_URL",
+  setEmbKey: "EMBEDDING_API_KEY",
+  setEmbModel: "EMBEDDING_MODEL",
+  setRerBase: "RERANK_BASE_URL",
+  setRerKey: "RERANK_API_KEY",
+  setRerModel: "RERANK_MODEL",
+};
+const SRC_LABEL = { ui: "界面", env: "环境变量", default: "默认" };
+
+async function openSettings() {
+  const { data } = await api.get("/api/settings");
+  for (const [fieldId, key] of Object.entries(SETTING_FIELDS)) {
+    const item = data[key];
+    const input = $(`#${fieldId}`);
+    const label = input.closest("label");
+    label.querySelector(".src-tag")?.remove();
+    const tag = document.createElement("span");
+    tag.className = "src-tag";
+    tag.textContent = SRC_LABEL[item.source] || item.source;
+    label.appendChild(tag);
+    if (item.is_set !== undefined) {          // 敏感字段：不回显，placeholder 提示
+      input.value = "";
+      input.placeholder = item.is_set ? `已保存（${item.hint}），留空保持不变` : "未设置";
+    } else {
+      input.value = item.value || "";
+    }
+  }
+  $("#settingsTestResult").textContent = "";
+  $("#settingsModal").classList.remove("hidden");
+}
+
+$("#btnModelSettings").onclick = openSettings;
+$("#btnCloseSettingsModal").onclick = () => $("#settingsModal").classList.add("hidden");
+
+function collectSettings() {
+  const values = {};
+  for (const [fieldId, key] of Object.entries(SETTING_FIELDS)) {
+    values[key] = $(`#${fieldId}`).value.trim();
+  }
+  return values;
+}
+
+$("#btnSaveModelSettings").onclick = async () => {
+  await api.req("PUT", "/api/settings", { values: collectSettings() });
+  toast("已保存，立即生效");
+  $("#settingsModal").classList.add("hidden");
+  refreshProviderInfo();
+};
+
+$("#btnTestSettings").onclick = async () => {
+  const box = $("#settingsTestResult");
+  box.textContent = "测试中…";
+  try {
+    const r = await api.post("/api/settings/test", { values: collectSettings() });
+    box.innerHTML =
+      `Embedding：${r.embedding.ok ? "✅" : "❌"} ${esc(r.embedding.detail)}<br>` +
+      `Rerank：${r.rerank.ok ? "✅" : "❌"} ${esc(r.rerank.detail)}`;
+  } catch (err) {
+    box.textContent = `测试失败：${err.message}`;
+  }
+};

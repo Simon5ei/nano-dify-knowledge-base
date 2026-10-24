@@ -1,33 +1,44 @@
-"""向量化：优先走 OpenAI 兼容 /embeddings 接口；未配置时降级为本地 HashEmbedding。"""
+"""向量化：优先走 OpenAI 兼容 /embeddings 接口；未配置时降级为本地 HashEmbedding。
+
+配置来源：settings_store（界面设置 > 环境变量 > 默认）。
+"""
 import hashlib
 import math
 
 import httpx
 
-from . import config
+from . import settings_store
 
 HASH_DIM = 256
 
 
+def embedding_available() -> bool:
+    return bool(settings_store.get("EMBEDDING_BASE_URL") and settings_store.get("EMBEDDING_API_KEY"))
+
+
+def embedding_provider_name() -> str:
+    return settings_store.get("EMBEDDING_MODEL") if embedding_available() else "local-hash-256"
+
+
 def embed_texts(texts: list[str]) -> tuple[list[list[float]], str]:
     """返回 (向量列表, 模型名)。"""
-    if config.EMBEDDING_BASE_URL and config.EMBEDDING_API_KEY:
-        return _embed_openai_compatible(texts), config.EMBEDDING_MODEL
+    if embedding_available():
+        return _embed_openai_compatible(texts), settings_store.get("EMBEDDING_MODEL")
     return [_hash_embed(t) for t in texts], "local-hash-256"
 
 
 def embed_query(text: str, model: str) -> list[float]:
-    if model != "local-hash-256" and config.EMBEDDING_BASE_URL and config.EMBEDDING_API_KEY:
+    if model != "local-hash-256" and embedding_available():
         return _embed_openai_compatible([text])[0]
     return _hash_embed(text)
 
 
 def _embed_openai_compatible(texts: list[str]) -> list[list[float]]:
-    url = config.EMBEDDING_BASE_URL.rstrip("/") + "/embeddings"
+    url = settings_store.get("EMBEDDING_BASE_URL").rstrip("/") + "/embeddings"
     resp = httpx.post(
         url,
-        headers={"Authorization": f"Bearer {config.EMBEDDING_API_KEY}"},
-        json={"model": config.EMBEDDING_MODEL, "input": texts},
+        headers={"Authorization": f"Bearer {settings_store.get('EMBEDDING_API_KEY')}"},
+        json={"model": settings_store.get("EMBEDDING_MODEL"), "input": texts},
         timeout=60,
     )
     resp.raise_for_status()

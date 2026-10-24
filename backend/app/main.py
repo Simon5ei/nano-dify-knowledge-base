@@ -6,8 +6,9 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .db import init_db
+from .embedding import embedding_provider_name
 from .rerank import rerank_provider_name
-from .routers import datasets, documents, hit_testing, segments
+from .routers import datasets, documents, hit_testing, segments, settings
 
 app = FastAPI(title="Nano Dify Knowledge Lib", version="0.1.0")
 
@@ -22,6 +23,7 @@ app.include_router(datasets.router)
 app.include_router(documents.router)
 app.include_router(segments.router)
 app.include_router(hit_testing.router)
+app.include_router(settings.router)
 
 
 @app.on_event("startup")
@@ -33,9 +35,7 @@ def _startup() -> None:
 def health():
     return {
         "status": "ok",
-        "embedding_provider": (
-            config.EMBEDDING_MODEL if config.EMBEDDING_BASE_URL and config.EMBEDDING_API_KEY else "local-hash-256"
-        ),
+        "embedding_provider": embedding_provider_name(),
         "rerank_provider": rerank_provider_name(),
     }
 
