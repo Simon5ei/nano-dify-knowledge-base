@@ -82,6 +82,7 @@ async function loadDocuments() {
       <td class="muted">${fmtTime(doc.created_at)}</td>
       <td></td>`;
     const ops = document.createElement("td");
+    const btnView = mkBtn("查看", () => openDocContent(doc));
     const btnSeg = mkBtn("分段", () => openSegments(doc));
     const btnRe = mkBtn("重新索引", async () => { await api.post(`/api/datasets/${currentDataset.id}/documents/${doc.id}/reindex`); toast("已重新索引"); loadDocuments(); });
     const btnDel = mkBtn("删除", async () => {
@@ -89,7 +90,7 @@ async function loadDocuments() {
       await api.del(`/api/datasets/${currentDataset.id}/documents/${doc.id}`);
       toast("已删除"); loadDocuments(); loadDatasets();
     });
-    [btnSeg, btnRe, btnDel].forEach((b) => { b.classList.add("btn-sm"); ops.appendChild(b); });
+    [btnView, btnSeg, btnRe, btnDel].forEach((b) => { b.classList.add("btn-sm"); ops.appendChild(b); });
     tr.appendChild(ops);
     tbody.appendChild(tr);
   }
@@ -99,6 +100,21 @@ function mkBtn(text, onclick) {
   const b = document.createElement("button");
   b.className = "btn"; b.textContent = text; b.onclick = onclick;
   return b;
+}
+
+/* ---------- 文档原文查看 ---------- */
+async function openDocContent(doc) {
+  $("#docContentTitle").textContent = `文档原文 · ${doc.name}`;
+  $("#docContentMeta").textContent = `${fmtSize(doc.size)} · ${doc.chunk_count} 个分段 · 上传于 ${fmtTime(doc.created_at)}`;
+  $("#docDownloadLink").href = `/api/datasets/${currentDataset.id}/documents/${doc.id}/download`;
+  $("#docContentBody").textContent = "加载中…";
+  $("#docContentModal").classList.remove("hidden");
+  try {
+    const data = await api.get(`/api/datasets/${currentDataset.id}/documents/${doc.id}/content`);
+    $("#docContentBody").textContent = data.content || "（空文档）";
+  } catch (err) {
+    $("#docContentBody").textContent = `加载失败：${err.message}`;
+  }
 }
 
 /* ---------- 分段管理 ---------- */
@@ -229,6 +245,7 @@ $("#btnHitTest").onclick = runHitTest;
 $("#hitQuery").addEventListener("keydown", (e) => { if (e.key === "Enter") runHitTest(); });
 
 $("#btnCloseSegModal").onclick = () => $("#segmentModal").classList.add("hidden");
+$("#btnCloseDocModal").onclick = () => $("#docContentModal").classList.add("hidden");
 $("#btnAddSegment").onclick = async () => {
   const content = prompt("输入新分段内容：");
   if (!content?.trim()) return;

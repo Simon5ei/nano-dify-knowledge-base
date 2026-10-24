@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
+from ..config import UPLOAD_DIR
 from ..db import get_conn
 from ..indexing import index_document, save_upload
-from ..parsing import SUPPORTED_EXT
+from ..parsing import SUPPORTED_EXT, ParseError, extract_text
 
 router = APIRouter(prefix="/api/datasets/{dataset_id}/documents", tags=["documents"])
 
@@ -55,6 +57,41 @@ async def upload_document(dataset_id: str, file: UploadFile):
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM documents WHERE id=?", (doc_id,)).fetchone()
     return dict(row)
+
+
+def _find_doc(dataset_id: str, document_id: str):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM documents WHERE id=? AND dataset_id=?", (document_id, dataset_id)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "文档不存在")
+    return dict(row)
+
+
+def _upload_path(doc: dict) -> Path:
+    path = UPLOAD_DIR / doc["dataset_id"] / f"{doc['id']}{Path(doc['name']).suffix.lower()}"
+    if not path.exists():
+        raise HTTPException(404, "原始文件已丢失")
+    return path
+
+
+@router.get("/{document_id}/content")
+def document_content(dataset_id: str, document_id: str):
+    """查看文档解析后的全文内容（与分段索引所用的文本一致）。"""
+    doc = _find_doc(dataset_id, document_id)
+    try:
+        text = extract_text(_upload_path(doc))
+    except ParseError as e:
+        raise HTTPException(422, str(e)) from e
+    return {"id": doc["id"], "name": doc["name"], "content": text}
+
+
+@router.get("/{document_id}/download")
+def download_document(dataset_id: str, document_id: str):
+    """下载原始上传文件。"""
+    doc = _find_doc(dataset_id, document_id)
+    return FileResponse(_upload_path(doc), filename=doc["name"])
 
 
 @router.delete("/{document_id}", status_code=204)

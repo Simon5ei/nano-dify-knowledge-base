@@ -96,6 +96,21 @@
     </div>
   </div>
 
+  <!-- 文档原文弹窗 -->
+  <div class="modal-mask hidden" id="docContentModal">
+    <div class="modal">
+      <header class="modal-header">
+        <h2 id="docContentTitle">文档原文</h2>
+        <div>
+          <a class="btn btn-sm" id="docDownloadLink" href="#">⬇ 下载原始文件</a>
+          <button class="btn-icon" id="btnCloseDocModal">✕</button>
+        </div>
+      </header>
+      <div class="doc-meta muted" id="docContentMeta"></div>
+      <pre class="doc-content" id="docContentBody">加载中…</pre>
+    </div>
+  </div>
+
   <!-- 新建知识库弹窗 -->
   <div class="modal-mask hidden" id="datasetModal">
     <div class="modal modal-sm">

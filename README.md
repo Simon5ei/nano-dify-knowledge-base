@@ -8,7 +8,7 @@
 ## 功能
 
 - **知识库管理**：新建 / 重命名 / 删除知识库，配置分段长度与重叠
-- **文档管理**：上传 `txt / md / pdf / docx`，自动解析、分段、向量化；支持重新索引与删除
+- **文档管理**：上传 `txt / md / pdf / docx`，自动解析、分段、向量化；支持查看原文、下载原始文件、重新索引与删除
 - **分段管理**：查看分段内容、在线编辑（自动重新向量化）、启用 / 禁用、手动新增、删除，统计命中次数
 - **召回测试**：输入问题即时检索，返回 TopK 命中分段、来源文档与相似度得分，支持得分阈值过滤
 - **向量化可插拔**：
@@ -83,6 +83,8 @@ python run.py
 | GET/PATCH/DELETE | `/api/datasets/{id}` | 详情 / 更新 / 删除 |
 | GET | `/api/datasets/{id}/documents` | 文档列表 |
 | POST | `/api/datasets/{id}/documents/upload` | 上传并索引文档 |
+| GET | `/api/datasets/{id}/documents/{docId}/content` | 查看文档解析后的全文 |
+| GET | `/api/datasets/{id}/documents/{docId}/download` | 下载原始文件 |
 | POST | `/api/datasets/{id}/documents/{docId}/reindex` | 重新索引 |
 | GET/POST | `/api/datasets/{id}/documents/{docId}/segments` | 分段列表 / 新增 |
 | PATCH/DELETE | `.../segments/{segId}` | 编辑 / 启停 / 删除分段 |
