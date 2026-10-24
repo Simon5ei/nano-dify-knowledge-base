@@ -31,3 +31,4 @@ class HitTestRequest(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(4, ge=1, le=20)
     score_threshold: float = Field(0.0, ge=0.0, le=1.0)
+    rerank: bool = False  # 开启后先向量粗排 3*top_k 候选，再精排到 top_k

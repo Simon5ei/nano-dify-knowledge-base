@@ -65,14 +65,59 @@ docker run -d --name nano-dify-knowledge-lib -p 8080:8000 \
 docker compose build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 使用真实 Embedding 服务（可选）
+### 接入 Embedding 服务（可选）
+
+任何 **OpenAI 兼容**（带 `/embeddings` 接口）的服务都能直接用，三个环境变量即可：
+
+| 环境变量 | 说明 | 示例 |
+|---|---|---|
+| `EMBEDDING_BASE_URL` | 服务地址（不含 `/embeddings`） | `https://api.openai.com/v1` |
+| `EMBEDDING_API_KEY` | API Key | `sk-...` |
+| `EMBEDDING_MODEL` | 模型名 | `text-embedding-3-small` |
+
+常见服务配置示例：
+
+| 服务商 | EMBEDDING_BASE_URL | EMBEDDING_MODEL |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `text-embedding-3-small` |
+| SiliconFlow（国内直连） | `https://api.siliconflow.cn/v1` | `BAAI/bge-m3` |
+| Ollama（本地） | `http://localhost:11434/v1` | `nomic-embed-text` |
 
 ```bash
 # Windows PowerShell
-$env:EMBEDDING_BASE_URL="https://api.openai.com/v1"
+$env:EMBEDDING_BASE_URL="https://api.siliconflow.cn/v1"
 $env:EMBEDDING_API_KEY="sk-..."
-$env:EMBEDDING_MODEL="text-embedding-3-small"
+$env:EMBEDDING_MODEL="BAAI/bge-m3"
 python run.py
+```
+
+> 注意：同一知识库的向量维度必须一致。**切换 Embedding 模型后，旧文档需要逐个「重新索引」**；
+> 未配置时系统自动用本地 Hash Embedding（离线可演示，非真实语义）。
+
+### 接入 Rerank 服务（可选）
+
+Rerank 是两阶段检索的第二步：先向量粗排取 `3 × TopK` 候选，再交给 Rerank 模型按相关性精排，
+能显著提升命中率（尤其跨语言、同义词场景）。任何 **Jina / Cohere v2 兼容**（带 `/rerank` 接口）的服务都能接：
+
+| 环境变量 | 说明 | 示例 |
+|---|---|---|
+| `RERANK_BASE_URL` | 服务地址（不含 `/rerank`） | `https://api.siliconflow.cn/v1` |
+| `RERANK_API_KEY` | API Key | `sk-...` |
+| `RERANK_MODEL` | 模型名 | `BAAI/bge-reranker-v2-m3` |
+
+| 服务商 | RERANK_BASE_URL | RERANK_MODEL |
+|---|---|---|
+| SiliconFlow（国内直连，部分模型免费） | `https://api.siliconflow.cn/v1` | `BAAI/bge-reranker-v2-m3` |
+| Jina AI | `https://api.jina.ai/v1` | `jina-reranker-v2-base-multilingual` |
+| Cohere | `https://api.cohere.com/v2` | `rerank-v3.5` |
+
+配置后在管理界面「召回测试」勾选 **Rerank** 即可对比效果：每条结果会同时显示
+rerank 得分和原始向量得分。未配置远程服务时勾选 Rerank 会用本地关键词重叠打分兜底（`local-keyword`）。
+
+Docker 部署时在 `docker-compose.yml` 的 `environment` 段取消对应注释即可，改完执行：
+
+```bash
+docker compose up -d
 ```
 
 ## API 概览

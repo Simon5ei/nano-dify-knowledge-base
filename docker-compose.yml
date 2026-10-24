@@ -9,6 +9,10 @@ services:
       # EMBEDDING_BASE_URL: "https://api.openai.com/v1"
       # EMBEDDING_API_KEY: "sk-..."
       # EMBEDDING_MODEL: "text-embedding-3-small"
+      # 可选：配置后召回测试可启用远程 Rerank 精排（Jina/Cohere/SiliconFlow 兼容接口）
+      # RERANK_BASE_URL: "https://api.siliconflow.cn/v1"
+      # RERANK_API_KEY: "sk-..."
+      # RERANK_MODEL: "BAAI/bge-reranker-v2-m3"
       # 可选：分段默认参数
       # DEFAULT_CHUNK_SIZE: "500"
       # DEFAULT_CHUNK_OVERLAP: "50"

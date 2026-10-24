@@ -181,16 +181,26 @@ async function runHitTest() {
     query,
     top_k: parseInt($("#hitTopK").value || "4"),
     score_threshold: parseFloat($("#hitThreshold").value || "0"),
+    rerank: $("#hitRerank").checked,
   };
-  const { records } = await api.post(`/api/datasets/${currentDataset.id}/hit-testing`, body);
+  const resp = await api.post(`/api/datasets/${currentDataset.id}/hit-testing`, body);
+  const records = resp.records;
   const box = $("#hitResults");
-  box.innerHTML = records.length ? "" : `<p class="muted">无命中结果</p>`;
+  box.innerHTML = "";
+  if (resp.rerank) {
+    const tag = document.createElement("p");
+    tag.className = "muted";
+    tag.textContent = `Rerank 提供方：${resp.rerank_provider}（粗排 ${Math.min(records.length, body.top_k * 3)}+ 候选 → 精排 Top${body.top_k}）`;
+    box.appendChild(tag);
+  }
+  if (!records.length) box.innerHTML += `<p class="muted">无命中结果</p>`;
   for (const r of records) {
     const el = document.createElement("div");
     el.className = "hit-card";
+    const vscore = r.vector_score != null ? `<span class="vscore">向量分 ${r.vector_score.toFixed(4)}</span>` : "";
     el.innerHTML = `<div class="hit-head">
         <span class="muted">${esc(r.document_name)} · 分段 #${r.position + 1}</span>
-        <span class="score">${r.score.toFixed(4)}</span>
+        <span><span class="score">${r.score.toFixed(4)}</span>${vscore}</span>
       </div><div class="content">${esc(r.content)}</div>`;
     box.appendChild(el);
   }
@@ -276,3 +286,9 @@ $("#btnDeleteDataset").onclick = async () => {
 };
 
 loadDatasets();
+
+/* 侧边栏底部展示当前 Embedding / Rerank 提供方 */
+api.get("/api/health").then((h) => {
+  $("#providerInfo").innerHTML =
+    `Embedding：${esc(h.embedding_provider)}<br>Rerank：${esc(h.rerank_provider)}`;
+});

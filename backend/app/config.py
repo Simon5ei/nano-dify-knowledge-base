@@ -16,6 +16,12 @@ EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "")   # 例: https://api.op
 EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
+# ---- Rerank 提供方（Jina / Cohere / SiliconFlow / TEI 等 /rerank 兼容接口）----
+# 不配置时召回测试的 rerank 走本地关键词重叠打分（离线可用，仅供演示）
+RERANK_BASE_URL = os.getenv("RERANK_BASE_URL", "")        # 例: https://api.siliconflow.cn/v1
+RERANK_API_KEY = os.getenv("RERANK_API_KEY", "")
+RERANK_MODEL = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+
 # ---- 分段默认参数 ----
 DEFAULT_CHUNK_SIZE = int(os.getenv("DEFAULT_CHUNK_SIZE", "500"))
 DEFAULT_CHUNK_OVERLAP = int(os.getenv("DEFAULT_CHUNK_OVERLAP", "50"))

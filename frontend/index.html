@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nano Dify · 知识库</title>
-  <link rel="stylesheet" href="/static/style.css?v=0.2.0" />
+  <link rel="stylesheet" href="/static/style.css?v=0.3.0" />
 </head>
 <body>
   <div id="app">
@@ -16,6 +16,7 @@
       </div>
       <button class="btn btn-primary btn-block" id="btnNewDataset">+ 新建知识库</button>
       <div class="dataset-list" id="datasetList"></div>
+      <div class="sidebar-footer muted" id="providerInfo"></div>
     </aside>
 
     <!-- 主区域 -->
@@ -59,6 +60,7 @@
             <input type="text" id="hitQuery" placeholder="输入测试问题，例如：产品的退货政策是什么？" />
             <label>TopK <input type="number" id="hitTopK" value="4" min="1" max="20" /></label>
             <label>阈值 <input type="number" id="hitThreshold" value="0" min="0" max="1" step="0.05" /></label>
+            <label class="check-label"><input type="checkbox" id="hitRerank" /> Rerank</label>
             <button class="btn btn-primary" id="btnHitTest">测试</button>
           </div>
           <div id="hitResults"></div>
@@ -131,6 +133,6 @@
   </div>
 
   <div class="toast hidden" id="toast"></div>
-  <script src="/static/app.js?v=0.2.0"></script>
+  <script src="/static/app.js?v=0.3.0"></script>
 </body>
 </html>

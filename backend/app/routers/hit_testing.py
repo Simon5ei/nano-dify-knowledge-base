@@ -1,10 +1,11 @@
-"""召回测试：对知识库做向量检索并返回命中分段。"""
+"""召回测试：向量检索（粗排）+ 可选 Rerank（精排）。"""
 import json
 
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_conn
 from ..embedding import cosine, embed_query
+from ..rerank import rerank, rerank_provider_name
 from ..schemas import HitTestRequest
 
 router = APIRouter(prefix="/api/datasets/{dataset_id}", tags=["hit-testing"])
@@ -43,7 +44,23 @@ def hit_testing(dataset_id: str, body: HitTestRequest):
             "score": round(cosine(qvec, vec), 4),
         })
     scored.sort(key=lambda x: x["score"], reverse=True)
-    records = [s for s in scored if s["score"] >= body.score_threshold][: body.top_k]
+
+    rerank_provider = None
+    if body.rerank and scored:
+        # 两阶段检索：向量粗排取 3*top_k 候选 -> rerank 精排取 top_k
+        candidates = scored[: max(body.top_k * 3, body.top_k)]
+        pairs = rerank(body.query, [c["content"] for c in candidates], body.top_k)
+        rerank_provider = rerank_provider_name()
+        records = []
+        for idx, rscore in pairs:
+            rec = dict(candidates[idx])
+            rec["vector_score"] = rec["score"]          # 保留原始向量分
+            rec["score"] = round(rscore, 4)             # 最终展示 rerank 分
+            records.append(rec)
+    else:
+        records = scored[: body.top_k]
+
+    records = [r for r in records if r["score"] >= body.score_threshold]
 
     # 累计命中次数
     if records:
@@ -52,4 +69,9 @@ def hit_testing(dataset_id: str, body: HitTestRequest):
                 "UPDATE segments SET hit_count = hit_count + 1 WHERE id=?",
                 [(r["segment_id"],) for r in records],
             )
-    return {"query": body.query, "records": records}
+    return {
+        "query": body.query,
+        "rerank": body.rerank,
+        "rerank_provider": rerank_provider,
+        "records": records,
+    }
