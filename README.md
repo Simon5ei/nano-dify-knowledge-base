@@ -24,6 +24,54 @@
 | 前端 | 原生 HTML / CSS / JS 管理界面，由后端直接托管 |
 | 向量检索 | 余弦相似度（纯 Python 实现） |
 
+## 架构设计
+
+> 七视图高清图源为手工排版的 HTML（[docs/architecture.html](docs/architecture.html)，可直接在浏览器打开交互预览），
+> 截图为 2x 高清 PNG，存放于 [docs/diagrams/](docs/diagrams)。
+
+### ① 总体架构
+
+分层组件视图：前端零构建，后端单进程，embedding / rerank 为仅有的可选外部依赖（未配置时自动降级本地实现，全流程离线可跑）。
+
+![总体架构](docs/diagrams/01-architecture.png)
+
+### ② 部署视图
+
+单容器 + named volume 持久化（SQLite 库 + 上传文件），`docker compose up -d` 一键起停，重建不丢数据。
+
+![部署视图](docs/diagrams/02-deployment.png)
+
+### ③ 数据流图 · 上传索引
+
+文档接收 → 解析 → 分段 → 按召回模式分流：vector 走向量化写 `segments.embedding`，bm25 走 jieba 分词写倒排表 `segment_terms`（零 token 零网络）。任一环节失败 → `documents.status = error`，界面可见并可重新索引。
+
+![上传索引数据流](docs/diagrams/03-dataflow-indexing.png)
+
+### ④ 时序视图 · 召回测试
+
+`POST /api/datasets/{id}/hit-testing` 按 `retrieval_mode` 路由：vector 走余弦相似度，bm25 走 BM25Okapi 打分（归一化到 0~1，与向量分共用阈值语义）；勾选 Rerank 时两阶段检索（粗排 3×TopK 候选 → 精排 TopK，返回双分数）。
+
+![召回测试时序](docs/diagrams/04-sequence-hit-testing.png)
+
+### ⑤ 状态机 · 文档生命周期
+
+`queuing → indexing → completed / error` 四态迁移；重新索引回到 indexing；删除文档级联清除分段与倒排词项。
+
+![文档状态机](docs/diagrams/05-document-state.png)
+
+### ⑥ ER · 数据模型
+
+5 张表：`datasets 1—N documents 1—N segments 1—N segment_terms`，外键级联删除；`settings` 表承载界面可改的运行时配置。
+
+![ER 数据模型](docs/diagrams/06-er-model.png)
+
+### ⑦ 设计决策
+
+1. **召回模式双轨**：vector（语义，花 token）与 bm25（精确词，零 token）在知识库级别二选一；索引流水线在分段后分流，共用分段 / 文档 / 召回测试 / Rerank 框架
+2. **配置三级优先级**：界面设置（DB）> 环境变量 > 内置默认；密钥脱敏展示、永不回传明文
+3. **DB 锁纪律**：所有网络调用（embedding / rerank）在 SQLite 锁外执行——实测踩过锁重入死锁后定下的规矩
+4. **已知边界**：BM25 不做语义泛化（同义改写查不到）；hybrid 融合召回留二期，`search_label` / 双分结构已预留位置
+
 ## 快速开始
 
 ### 方式一：本地运行
@@ -168,6 +216,9 @@ docker compose up -d
 │   │   └── routers/         # datasets / documents / segments / hit_testing
 │   └── requirements.txt
 ├── frontend/                # 管理界面（原生 HTML/CSS/JS）
+├── docs/
+│   ├── architecture.html    # 架构设计交互预览页（图源）
+│   └── diagrams/            # 架构设计七视图高清 PNG
 ├── licenses/LICENSE-dify    # Dify 官方许可证（归属参考）
 ├── LICENSE                  # Apache License 2.0（本项目）
 ├── NOTICE                   # 归属说明

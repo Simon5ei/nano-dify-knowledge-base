@@ -13,3 +13,6 @@ backend/data/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# 临时预览与截图中间产物
+.preview/

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nano Dify Knowledge Lib · 架构设计</title>
+<style>
+  :root {
+    --ink: #101828; --muted: #667085; --line: #e4e7ec;
+    --bg: #f6f7fb; --card: #ffffff;
+    --c-ui: #eef4ff; --c-ui-bd: #b2ccff; --c-ui-tx: #175cd3;
+    --c-api: #f0f9ff; --c-api-bd: #7dd3fc; --c-api-tx: #026aa2;
+    --c-svc: #f4f3ff; --c-svc-bd: #a4bcfd; --c-svc-tx: #3538cd;
+    --c-db: #ecfdf3; --c-db-bd: #6ce9a6; --c-db-tx: #067647;
+    --c-ext: #fffaeb; --c-ext-bd: #fec84b; --c-ext-tx: #b54708;
+    --c-bm25: #fdf2fa; --c-bm25-bd: #f670c7; --c-bm25-tx: #c11574;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.6;
+  }
+  .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+  header.hero { margin-bottom: 32px; }
+  header.hero h1 { font-size: 26px; letter-spacing: -0.02em; }
+  header.hero p { color: var(--muted); margin-top: 6px; }
+  nav.toc {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 40px;
+    position: sticky; top: 0; background: var(--bg); padding: 10px 0; z-index: 10;
+  }
+  nav.toc a {
+    text-decoration: none; color: var(--muted); font-size: 13px;
+    border: 1px solid var(--line); background: var(--card);
+    padding: 5px 12px; border-radius: 999px;
+  }
+  nav.toc a:hover { color: var(--c-ui-tx); border-color: var(--c-ui-bd); }
+  section { margin-bottom: 56px; scroll-margin-top: 70px; }
+  section h2 { font-size: 19px; margin-bottom: 4px; }
+  section h2 .no {
+    display: inline-block; width: 26px; height: 26px; line-height: 26px; text-align: center;
+    background: var(--ink); color: #fff; border-radius: 8px; font-size: 13px; margin-right: 8px;
+    vertical-align: 2px;
+  }
+  section .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .canvas {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 28px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+
+  /* ---------- 通用元素 ---------- */
+  .layer { border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .layer-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .06em; margin-bottom: 10px; text-transform: uppercase; }
+  .chip {
+    display: inline-block; border-radius: 10px; padding: 8px 12px; font-size: 13px;
+    border: 1.5px solid; background: #fff; line-height: 1.35;
+  }
+  .chip b { display: block; font-size: 13px; }
+  .chip small { color: var(--muted); font-size: 11px; }
+  .arrow { text-align: center; color: var(--muted); font-size: 18px; line-height: 1; margin: 10px 0; }
+  .arrow span { font-size: 11px; vertical-align: 3px; margin-left: 4px; }
+
+  /* ---------- 架构图 ---------- */
+  .arch-browser { display: flex; justify-content: center; }
+  .arch-container { border: 2px solid var(--c-ui-bd); background: #fbfcff; border-radius: 16px; padding: 16px; position: relative; }
+  .arch-container > .tag {
+    position: absolute; top: -11px; left: 16px; background: var(--c-ui); color: var(--c-ui-tx);
+    border: 1px solid var(--c-ui-bd); font-size: 12px; padding: 1px 10px; border-radius: 999px; font-weight: 600;
+  }
+  .arch-row { display: grid; gap: 10px; }
+  .arch-api { grid-template-columns: repeat(5, 1fr); }
+  .arch-svc { grid-template-columns: repeat(4, 1fr); }
+  .arch-data { grid-template-columns: repeat(2, 1fr); }
+  .chip.api { border-color: var(--c-api-bd); background: var(--c-api); color: var(--c-api-tx); text-align: center; }
+  .chip.svc { border-color: var(--c-svc-bd); background: var(--c-svc); color: var(--c-svc-tx); }
+  .chip.svc.bm25 { border-color: var(--c-bm25-bd); background: var(--c-bm25); color: var(--c-bm25-tx); }
+  .chip.db { border-color: var(--c-db-bd); background: var(--c-db); color: var(--c-db-tx); text-align: center; }
+  .chip.ui { border-color: var(--c-ui-bd); background: var(--c-ui); color: var(--c-ui-tx); text-align: center; }
+  .arch-ext { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .chip.ext { border-color: var(--c-ext-bd); background: var(--c-ext); color: var(--c-ext-tx); text-align: center; border-style: dashed; }
+  .ext-note { text-align: center; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  /* ---------- 部署图 ---------- */
+  .deploy { display: grid; grid-template-columns: 1fr 64px 2fr 64px 1fr; align-items: center; gap: 4px; }
+  .deploy .box { border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: #fff; }
+  .deploy .box.docker { border-color: var(--c-api-bd); background: var(--c-api); }
+  .deploy .box .t { font-weight: 600; font-size: 13px; }
+  .deploy .box .d { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .deploy .arr { text-align: center; color: var(--muted); font-size: 20px; }
+  .deploy .arr small { display: block; font-size: 10px; }
+
+  /* ---------- DFD 流水线 ---------- */
+  .pipe { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .step {
+    flex: 1; min-width: 120px; background: #fff; border: 1.5px solid var(--c-api-bd);
+    border-radius: 12px; padding: 12px; position: relative;
+  }
+  .step .num {
+    display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 6px;
+    background: var(--c-api); color: var(--c-api-tx); font-size: 11px; text-align: center; font-weight: 700;
+  }
+  .step .t { font-weight: 600; font-size: 13px; margin: 6px 0 2px; }
+  .step .d { font-size: 11px; color: var(--muted); }
+  .pipe .join { align-self: center; padding: 0 8px; color: var(--muted); font-size: 18px; }
+  .fork { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .branch { border-radius: 12px; padding: 14px; border: 1.5px solid; }
+  .branch.vec { border-color: var(--c-svc-bd); background: var(--c-svc); }
+  .branch.bm { border-color: var(--c-bm25-bd); background: var(--c-bm25); }
+  .branch .t { font-weight: 700; font-size: 13px; }
+  .branch.vec .t { color: var(--c-svc-tx); } .branch.bm .t { color: var(--c-bm25-tx); }
+  .branch .d { font-size: 12px; color: var(--ink); opacity: .75; margin-top: 4px; }
+  .fork-label { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; }
+  .after { margin-top: 14px; text-align: center; }
+  .chip.done { border-color: var(--c-db-bd); background: var(--c-db); color: var(--c-db-tx); }
+
+  /* ---------- 时序（泳道步骤） ---------- */
+  .seq { display: flex; flex-direction: column; gap: 8px; }
+  .seq-row { display: grid; grid-template-columns: 150px 26px 1fr; align-items: center; gap: 10px; }
+  .seq-row .who { font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; }
+  .seq-row .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-api-bd); margin: 0 auto; }
+  .seq-row .what { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+  .seq-branch { border-radius: 12px; padding: 12px 14px; margin: 6px 0 6px 40px; }
+  .seq-branch .cond { font-size: 11px; font-weight: 700; letter-spacing: .05em; margin-bottom: 8px; }
+  .seq-branch.vec { background: var(--c-svc); border: 1px dashed var(--c-svc-bd); }
+  .seq-branch.vec .cond { color: var(--c-svc-tx); }
+  .seq-branch.bm { background: var(--c-bm25); border: 1px dashed var(--c-bm25-bd); }
+  .seq-branch.bm .cond { color: var(--c-bm25-tx); }
+  .seq-branch.opt { background: var(--c-ext); border: 1px dashed var(--c-ext-bd); }
+  .seq-branch.opt .cond { color: var(--c-ext-tx); }
+  .seq-branch ul { list-style: none; }
+  .seq-branch li { font-size: 13px; padding: 3px 0 3px 18px; position: relative; }
+  .seq-branch li::before { content: "→"; position: absolute; left: 0; color: var(--muted); }
+
+  /* ---------- 状态机 ---------- */
+  .states { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
+  .state {
+    border-radius: 999px; padding: 10px 22px; font-weight: 600; font-size: 13px;
+    border: 2px solid; background: #fff;
+  }
+  .state.s-queue { border-color: var(--c-ext-bd); color: var(--c-ext-tx); background: var(--c-ext); }
+  .state.s-index { border-color: var(--c-api-bd); color: var(--c-api-tx); background: var(--c-api); }
+  .state.s-ok { border-color: var(--c-db-bd); color: var(--c-db-tx); background: var(--c-db); }
+  .state.s-err { border-color: #fda29b; color: #b42318; background: #fef3f2; }
+  .trans { padding: 0 10px; text-align: center; color: var(--muted); font-size: 18px; }
+  .trans small { display: block; font-size: 10px; max-width: 120px; }
+  .state-notes { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; color: var(--muted); }
+  .state-notes div { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+
+  /* ---------- ER ---------- */
+  .er { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .tbl { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+  .tbl .hd { padding: 8px 12px; font-weight: 700; font-size: 13px; color: #fff; }
+  .tbl:nth-child(1) .hd { background: var(--c-ui-tx); }
+  .tbl:nth-child(2) .hd { background: var(--c-api-tx); }
+  .tbl:nth-child(3) .hd { background: var(--c-svc-tx); }
+  .tbl:nth-child(4) .hd { background: var(--c-bm25-tx); }
+  .tbl:nth-child(5) .hd { background: var(--c-ext-tx); }
+  .tbl table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl td { padding: 5px 12px; border-top: 1px solid var(--line); }
+  .tbl td:first-child { color: var(--muted); width: 44px; font-size: 11px; }
+  .badge { font-size: 10px; border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 700; }
+  .badge.pk { background: #fef0c7; color: #b54708; }
+  .badge.fk { background: #e0e7ff; color: #3538cd; }
+  .er-relations { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .rel { font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; color: var(--muted); }
+  .rel b { color: var(--ink); }
+
+  .decisions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .decision { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--c-ui-bd); border-radius: 10px; padding: 12px 16px; }
+  .decision .t { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .decision .d { font-size: 12px; color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <h1>📚 Nano Dify Knowledge Lib · 架构设计</h1>
+    <p>迷你知识库系统 —— 架构 / 部署 / 数据流 / 时序 / 状态机 / 数据模型 六视图</p>
+  </header>
+
+  <nav class="toc">
+    <a href="#s1">① 总体架构</a><a href="#s2">② 部署</a><a href="#s3">③ 数据流·上传索引</a>
+    <a href="#s4">④ 时序·召回测试</a><a href="#s5">⑤ 状态机·文档</a><a href="#s6">⑥ ER·数据模型</a>
+    <a href="#s7">⑦ 设计决策</a>
+  </nav>
+
+  <!-- ① 架构 -->
+  <section id="s1">
+    <h2><span class="no">1</span>总体架构</h2>
+    <p class="sub">分层组件视图：前端零构建，后端单进程，embedding / rerank 为仅有的可选外部依赖</p>
+    <div class="canvas">
+      <div class="arch-browser">
+        <div class="chip ui"><b>管理控制台</b><small>index.html + app.js + style.css（原生 JS，由 FastAPI 托管）</small></div>
+      </div>
+      <div class="arrow">▼<span>HTTP / JSON</span></div>
+      <div class="arch-container">
+        <span class="tag">Docker 容器 :8000 · python:3.11-slim + uvicorn</span>
+        <div class="layer" style="border-color:var(--c-api-bd)">
+          <div class="layer-title" style="color:var(--c-api-tx)">API 层 · FastAPI Routers</div>
+          <div class="arch-row arch-api">
+            <div class="chip api"><b>/api/datasets</b><small>知识库 CRUD</small></div>
+            <div class="chip api"><b>/api/documents</b><small>上传·原文·下载·重索引</small></div>
+            <div class="chip api"><b>/api/segments</b><small>分段编辑·启停</small></div>
+            <div class="chip api"><b>/api/hit-testing</b><small>召回测试</small></div>
+            <div class="chip api"><b>/api/settings</b><small>模型设置·连接测试</small></div>
+          </div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="layer" style="border-color:var(--c-svc-bd)">
+          <div class="layer-title" style="color:var(--c-svc-tx)">服务层</div>
+          <div class="arch-row arch-svc">
+            <div class="chip svc"><b>indexing.py</b><small>索引流水线</small></div>
+            <div class="chip svc"><b>parsing.py</b><small>txt/md/pdf/docx 解析</small></div>
+            <div class="chip svc"><b>chunking.py</b><small>递归分段 + 重叠</small></div>
+            <div class="chip svc"><b>embedding.py</b><small>向量化适配器</small></div>
+            <div class="chip svc bm25"><b>bm25.py</b><small>BM25Okapi + jieba</small></div>
+            <div class="chip svc"><b>rerank.py</b><small>精排适配器</small></div>
+            <div class="chip svc"><b>settings_store.py</b><small>运行时配置（界面&gt;环境变量&gt;默认）</small></div>
+          </div>
+        </div>
+        <div class="arrow">▼</div>
+        <div class="layer" style="border-color:var(--c-db-bd)">
+          <div class="layer-title" style="color:var(--c-db-tx)">数据层 · db.py</div>
+          <div class="arch-row arch-data">
+            <div class="chip db"><b>🗄 SQLite</b><small>nano_dify.db（5 张表）</small></div>
+            <div class="chip db"><b>📁 uploads/</b><small>原始上传文件</small></div>
+          </div>
+        </div>
+        <div class="arch-ext">
+          <div class="chip ext"><b>☁ Embedding API</b><small>OpenAI 兼容 /embeddings（可选）</small></div>
+          <div class="chip ext"><b>☁ Rerank API</b><small>Jina / Cohere 兼容 /rerank（可选）</small></div>
+        </div>
+        <div class="ext-note">- - 虚线 = 可选外部调用；未配置时自动降级本地实现（hash 向量 / 关键词 rerank），全流程离线可跑</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--c-ui-bd)"></i>展现层</span>
+        <span><i style="background:var(--c-api-bd)"></i>API 层</span>
+        <span><i style="background:var(--c-svc-bd)"></i>服务层</span>
+        <span><i style="background:var(--c-bm25-bd)"></i>BM25 零 token 路径</span>
+        <span><i style="background:var(--c-db-bd)"></i>数据层</span>
+        <span><i style="background:var(--c-ext-bd)"></i>可选外部服务</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 部署 -->
+  <section id="s2">
+    <h2><span class="no">2</span>部署视图</h2>
+    <p class="sub">单容器 + named volume 持久化，compose 一键起停</p>
+    <div class="canvas">
+      <div class="deploy">
+        <div class="box">
+          <div class="t">🌐 浏览器</div>
+          <div class="d">http://127.0.0.1:8080</div>
+        </div>
+        <div class="arr">→<small>8080→8000</small></div>
+        <div class="box docker">
+          <div class="t">🐳 Docker 容器 · nano-dify-knowledge-lib</div>
+          <div class="d">python:3.11-slim · uvicorn :8000 · restart: unless-stopped<br/>
+          💾 named volume <b>nano-dify-data</b> → /app/backend/data（SQLite + 上传文件，重建不丢数据）</div>
+        </div>
+        <div class="arr">⇢<small>HTTPS 可选</small></div>
+        <div class="box">
+          <div class="t">☁ Embedding / Rerank API</div>
+          <div class="d">SiliconFlow / OpenAI / Jina / Cohere / Ollama</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ③ DFD -->
+  <section id="s3">
+    <h2><span class="no">3</span>数据流图 · 上传索引</h2>
+    <p class="sub">任一环节失败 → documents.status = error（记录原因，界面可见，可重新索引）</p>
+    <div class="canvas">
+      <div class="pipe">
+        <div class="step"><span class="num">1</span><div class="t">文档接收</div><div class="d">格式校验 txt/md/pdf/docx<br/>存入 uploads/ · 状态 queuing</div></div>
+        <div class="join">→</div>
+        <div class="step"><span class="num">2</span><div class="t">解析</div><div class="d">extract_text()<br/>pypdf / python-docx / 直读</div></div>
+        <div class="join">→</div>
+        <div class="step"><span class="num">3</span><div class="t">分段</div><div class="d">split_text()<br/>递归分隔符 + 重叠合并</div></div>
+        <div class="join">→</div>
+        <div class="step" style="border-color:var(--c-ext-bd)"><span class="num" style="background:var(--c-ext);color:var(--c-ext-tx)">4</span><div class="t">模式分流</div><div class="d">读 datasets.retrieval_mode</div></div>
+      </div>
+      <div class="fork-label">▼ 按召回模式分流 ▼</div>
+      <div class="fork">
+        <div class="branch vec">
+          <div class="t">vector 向量路径（远程 embedding 时消耗 token）</div>
+          <div class="d">embed_texts() → OpenAI 兼容接口或本地 hash → 向量 JSON 写入 <b>segments.embedding</b></div>
+        </div>
+        <div class="branch bm">
+          <div class="t">bm25 关键词路径（零 token 零网络）</div>
+          <div class="d">term_freqs() → jieba 分词 + 词频统计 → 倒排写入 <b>segment_terms</b>（embedding 留空）</div>
+        </div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="after"><div class="chip done"><b>状态 = completed</b><small>chunk_count 更新 · datasets.updated_at 刷新</small></div></div>
+    </div>
+  </section>
+
+  <!-- ④ 时序 -->
+  <section id="s4">
+    <h2><span class="no">4</span>时序视图 · 召回测试</h2>
+    <p class="sub">POST /api/datasets/{id}/hit-testing —— 按 retrieval_mode 路由，Rerank 可选叠加</p>
+    <div class="canvas">
+      <div class="seq">
+        <div class="seq-row"><div class="who">用户 → 前端</div><div class="dot"></div><div class="what">输入 query / TopK / 阈值 / Rerank 开关</div></div>
+        <div class="seq-row"><div class="who">前端 → 路由</div><div class="dot"></div><div class="what">POST /hit-testing</div></div>
+        <div class="seq-row"><div class="who">路由 → SQLite</div><div class="dot"></div><div class="what">读 datasets.retrieval_mode，决定召回路径</div></div>
+      </div>
+
+      <div class="seq-branch vec">
+        <div class="cond">ALT · vector 向量召回</div>
+        <ul>
+          <li>embed_query(query)：settings_store 取生效配置（界面 &gt; 环境变量 &gt; 默认）</li>
+          <li>取启用分段的 embedding 向量 → 余弦相似度排序（0~1）</li>
+        </ul>
+      </div>
+      <div class="seq-branch bm">
+        <div class="cond">ALT · bm25 关键词召回</div>
+        <ul>
+          <li>tokenize(query)（jieba 分词）</li>
+          <li>查 segment_terms 倒排，聚合 TF / DF / N / avgdl → BM25Okapi 打分</li>
+          <li>归一化（最高分 = 1），与向量分共用阈值语义</li>
+        </ul>
+      </div>
+      <div class="seq-branch opt">
+        <div class="cond">OPT · 勾选 Rerank（两阶段检索）</div>
+        <ul>
+          <li>粗排取 3×TopK 候选 → rerank(query, candidates)</li>
+          <li>远程 /rerank 或本地关键词兜底 → 精排 TopK，返回双分数</li>
+        </ul>
+      </div>
+
+      <div class="seq" style="margin-top:6px">
+        <div class="seq-row"><div class="who">路由 → SQLite</div><div class="dot"></div><div class="what">命中分段 hit_count + 1</div></div>
+        <div class="seq-row"><div class="who">路由 → 前端</div><div class="dot"></div><div class="what">records：双分数 + search_label + 来源文档</div></div>
+        <div class="seq-row"><div class="who">前端 → 用户</div><div class="dot"></div><div class="what">命中卡片（得分 / 内容 / 来源）</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ 状态机 -->
+  <section id="s5">
+    <h2><span class="no">5</span>状态机 · 文档生命周期</h2>
+    <p class="sub">documents.status 四态迁移</p>
+    <div class="canvas">
+      <div class="states">
+        <div class="state s-queue">queuing</div>
+        <div class="trans">→<small>index_document()</small></div>
+        <div class="state s-index">indexing</div>
+        <div class="trans">→<small>索引成功</small></div>
+        <div class="state s-ok">completed</div>
+      </div>
+      <div class="states" style="margin-top:14px">
+        <div class="state s-index">indexing</div>
+        <div class="trans">→<small>解析失败 / 分段为空 / 向量化异常</small></div>
+        <div class="state s-err">error</div>
+      </div>
+      <div class="state-notes">
+        <div>🔄 <b>重新索引</b>：completed / error → indexing（按当前召回模式与分段参数重建）</div>
+        <div>🗑 <b>删除文档</b>：completed / error → 销毁，级联删除分段与倒排词项</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑥ ER -->
+  <section id="s6">
+    <h2><span class="no">6</span>ER · 数据模型</h2>
+    <p class="sub">5 张表，外键级联删除；settings 表承载界面可改的运行时配置</p>
+    <div class="canvas">
+      <div class="er">
+        <div class="tbl">
+          <div class="hd">datasets · 知识库</div>
+          <table>
+            <tr><td>TEXT</td><td>id<span class="badge pk">PK</span></td></tr>
+            <tr><td>TEXT</td><td>name / description</td></tr>
+            <tr><td>TEXT</td><td>retrieval_mode <i>(vector|bm25)</i></td></tr>
+            <tr><td>TEXT</td><td>embedding_model <i>(索引时记录)</i></td></tr>
+            <tr><td>INT</td><td>chunk_size / chunk_overlap</td></tr>
+          </table>
+        </div>
+        <div class="tbl">
+          <div class="hd">documents · 文档</div>
+          <table>
+            <tr><td>TEXT</td><td>id<span class="badge pk">PK</span></td></tr>
+            <tr><td>TEXT</td><td>dataset_id<span class="badge fk">FK</span></td></tr>
+            <tr><td>TEXT</td><td>name / mime / size</td></tr>
+            <tr><td>TEXT</td><td>status <i>(四态) + error</i></td></tr>
+            <tr><td>INT</td><td>chunk_count</td></tr>
+          </table>
+        </div>
+        <div class="tbl">
+          <div class="hd">segments · 分段</div>
+          <table>
+            <tr><td>TEXT</td><td>id<span class="badge pk">PK</span></td></tr>
+            <tr><td>TEXT</td><td>document_id / dataset_id<span class="badge fk">FK</span></td></tr>
+            <tr><td>TEXT</td><td>content / position</td></tr>
+            <tr><td>INT</td><td>enabled · hit_count</td></tr>
+            <tr><td>TEXT</td><td>embedding <i>(vector 模式)</i></td></tr>
+            <tr><td>INT</td><td>token_len <i>(bm25 模式)</i></td></tr>
+          </table>
+        </div>
+        <div class="tbl">
+          <div class="hd">segment_terms · 倒排索引</div>
+          <table>
+            <tr><td>TEXT</td><td>segment_id<span class="badge fk">FK</span></td></tr>
+            <tr><td>TEXT</td><td>term</td></tr>
+            <tr><td>INT</td><td>tf <i>(词频)</i></td></tr>
+            <tr><td></td><td><i>PK(segment_id, term)</i></td></tr>
+          </table>
+        </div>
+        <div class="tbl">
+          <div class="hd">settings · 运行时配置</div>
+          <table>
+            <tr><td>TEXT</td><td>key<span class="badge pk">PK</span> <i>EMBEDDING_* / RERANK_*</i></td></tr>
+            <tr><td>TEXT</td><td>value <i>(优先级高于环境变量)</i></td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="er-relations">
+        <div class="rel"><b>datasets 1—N documents</b></div>
+        <div class="rel"><b>documents 1—N segments</b>（级联删除）</div>
+        <div class="rel"><b>segments 1—N segment_terms</b>（级联删除，bm25）</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑦ 设计决策 -->
+  <section id="s7">
+    <h2><span class="no">7</span>设计决策</h2>
+    <p class="sub">图之外的约定与已知边界</p>
+    <div class="decisions">
+      <div class="decision"><div class="t">召回模式双轨</div><div class="d">vector（语义，花 token）与 bm25（精确词，零 token）在知识库级别二选一；索引流水线在分段后分流，共用分段/文档/召回测试/Rerank 框架</div></div>
+      <div class="decision"><div class="t">配置三级优先级</div><div class="d">界面设置（DB）&gt; 环境变量 &gt; 内置默认；密钥脱敏展示、永不回传明文</div></div>
+      <div class="decision"><div class="t">DB 锁纪律</div><div class="d">所有网络调用（embedding / rerank）在 SQLite 锁外执行——实测踩过锁重入死锁后定下的规矩</div></div>
+      <div class="decision"><div class="t">已知边界</div><div class="d">BM25 不做语义泛化（同义改写查不到）；hybrid 融合召回留二期，search_label / 双分结构已预留位置</div></div>
+    </div>
+  </section>
+
+  <footer>Nano Dify Knowledge Lib · 架构设计 · Apache-2.0</footer>
+</div>
+</body>
+</html>
