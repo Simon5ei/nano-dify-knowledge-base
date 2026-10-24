@@ -38,6 +38,15 @@ def health():
     }
 
 
+@app.middleware("http")
+async def no_cache_frontend(request, call_next):
+    """前端静态资源与首页不缓存，保证发版后浏览器立即拿到新文件。"""
+    resp = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return resp
+
+
 # ---- 前端静态资源（管理界面）----
 if config.FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=config.FRONTEND_DIR), name="static")
