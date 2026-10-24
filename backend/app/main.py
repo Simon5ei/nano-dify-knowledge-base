@@ -1,4 +1,4 @@
-"""Nano Dify Knowledge Lib —— 迷你知识库服务入口。"""
+"""Nano Dify Knowledge Base —— 迷你知识库服务入口。"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -11,7 +11,7 @@ from .embedding import embedding_provider_name
 from .rerank import rerank_provider_name
 from .routers import datasets, documents, hit_testing, segments, settings
 
-app = FastAPI(title="Nano Dify Knowledge Lib", version="0.1.0")
+app = FastAPI(title="Nano Dify Knowledge Base", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

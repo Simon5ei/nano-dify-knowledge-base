@@ -1,4 +1,4 @@
-# Nano Dify Knowledge Lib
+# Nano Dify Knowledge Base
 
 参考开源项目 [Dify](https://github.com/langgenius/dify) 的**知识库（Dataset）**模块，
 独立实现的一个迷你版本：只包含知识库本身及其管理界面，单进程、零中间件、开箱即用。
@@ -103,9 +103,9 @@ docker compose down
 不使用 compose 也可以直接构建镜像：
 
 ```bash
-docker build -t nano-dify-knowledge-lib .
-docker run -d --name nano-dify-knowledge-lib -p 8080:8000 \
-  -v nano-dify-data:/app/backend/data nano-dify-knowledge-lib
+docker build -t nano-dify-knowledge-base .
+docker run -d --name nano-dify-knowledge-base -p 8080:8000 \
+  -v nano-dify-data:/app/backend/data nano-dify-knowledge-base
 ```
 
 网络受限环境下可用构建参数指定 PyPI 镜像加速：

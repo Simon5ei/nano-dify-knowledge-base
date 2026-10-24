@@ -1,4 +1,4 @@
-/* Nano Dify Knowledge Lib 管理界面 */
+/* Nano Dify Knowledge Base 管理界面 */
 const $ = (sel) => document.querySelector(sel);
 const api = {
   async req(method, url, body, isForm = false) {

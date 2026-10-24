@@ -1,7 +1,7 @@
 services:
-  nano-dify-knowledge-lib:
+  nano-dify-knowledge-base:
     build: .
-    container_name: nano-dify-knowledge-lib
+    container_name: nano-dify-knowledge-base
     ports:
       - "8080:8000"   # 宿主机 8080 -> 容器 8000（避开本机 8000 占用）
     environment:
