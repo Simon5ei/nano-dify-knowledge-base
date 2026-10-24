@@ -39,9 +39,11 @@ def create_dataset(body: DatasetCreate):
     now = _now()
     with get_conn() as conn:
         conn.execute(
-            """INSERT INTO datasets (id, name, description, embedding_model, chunk_size, chunk_overlap, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (ds_id, body.name, body.description, "", body.chunk_size, body.chunk_overlap, now, now),
+            """INSERT INTO datasets
+               (id, name, description, embedding_model, chunk_size, chunk_overlap, retrieval_mode, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (ds_id, body.name, body.description, "", body.chunk_size, body.chunk_overlap,
+             body.retrieval_mode, now, now),
         )
     return _get_or_404(ds_id)
 

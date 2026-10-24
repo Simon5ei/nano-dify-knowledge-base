@@ -1,7 +1,9 @@
 """Pydantic 请求/响应模型。"""
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+RetrievalMode = Literal["vector", "bm25"]
 
 
 class DatasetCreate(BaseModel):
@@ -9,6 +11,7 @@ class DatasetCreate(BaseModel):
     description: str = ""
     chunk_size: int = Field(500, ge=50, le=4000)
     chunk_overlap: int = Field(50, ge=0, le=500)
+    retrieval_mode: RetrievalMode = "vector"
 
 
 class DatasetUpdate(BaseModel):
@@ -16,6 +19,7 @@ class DatasetUpdate(BaseModel):
     description: Optional[str] = None
     chunk_size: Optional[int] = Field(None, ge=50, le=4000)
     chunk_overlap: Optional[int] = Field(None, ge=0, le=500)
+    retrieval_mode: Optional[RetrievalMode] = None
 
 
 class SegmentCreate(BaseModel):

@@ -11,9 +11,10 @@
 - **文档管理**：上传 `txt / md / pdf / docx`，自动解析、分段、向量化；支持查看原文、下载原始文件、重新索引与删除
 - **分段管理**：查看分段内容、在线编辑（自动重新向量化）、启用 / 禁用、手动新增、删除，统计命中次数
 - **召回测试**：输入问题即时检索，返回 TopK 命中分段、来源文档与相似度得分，支持得分阈值过滤
-- **向量化可插拔**：
-  - 配置 OpenAI 兼容接口（`EMBEDDING_BASE_URL` + `EMBEDDING_API_KEY` + `EMBEDDING_MODEL`）即用真实语义向量
-  - 不配置时自动降级为本地 Hash Embedding（离线可跑通全流程，仅供演示）
+- **两种召回方式（知识库级别可选）**：
+  - **向量检索**：语义匹配，配置 OpenAI 兼容接口（`EMBEDDING_BASE_URL` + `EMBEDDING_API_KEY` + `EMBEDDING_MODEL`，或界面「⚙ 模型设置」）即用真实语义向量；不配置时降级为本地 Hash Embedding（仅供演示）
+  - **BM25 关键词检索**：纯本地、零 token、零网络；jieba 中文分词（未装时退化为字 bigram），倒排索引存 SQLite，分数归一化到 0~1
+  - 两种方式都可叠加 **Rerank** 精排（两阶段：粗排 3×TopK 候选 → 精排 TopK）
 
 ## 技术栈
 
@@ -125,6 +126,16 @@ Docker 部署时在 `docker-compose.yml` 的 `environment` 段取消对应注释
 docker compose up -d
 ```
 
+### BM25 关键词召回（零 token）
+
+不想花 embedding token 时，新建知识库选择「关键词检索（BM25）」即可：
+
+- **索引**：上传文档只做本地分词（jieba）+ 倒排表写入，不调任何外部接口，秒级完成
+- **查询**：标准 BM25Okapi 打分（k1=1.5, b=0.75），结果归一化到 0~1，与向量分共用阈值语义
+- **适用**：精确词、专有名词、产品型号、编号类查询；语义泛化（同义改写）场景请用向量模式
+- 召回测试面板会标注当次召回方式（`vector` / `bm25(jieba)`），两种方式都能再叠加 Rerank
+- 在知识库「设置」页可随时切换召回方式，切换后需对已有文档逐个「重新索引」
+
 ## API 概览
 
 | 方法 | 路径 | 说明 |
@@ -168,10 +179,11 @@ docker compose up -d
 | Dify 概念 | 本项目实现 |
 |---|---|
 | Dataset 知识库 | `datasets` 表 + 侧边栏管理 |
-| Document 文档 | 上传解析 + 状态机（queuing/indexing/completed/error） |
+| Document 文档 | 上传解析 + 状态机（queuing/indexing/completed/error）+ 原文查看/下载 |
 | Segment 分段 | 可编辑、可启停、命中计数 |
 | Hit Testing 召回测试 | `/hit-testing` 接口 + 测试面板 |
-| 索引方式（高质量/经济） | OpenAI 兼容 Embedding / 本地 Hash Embedding |
+| 索引方式（高质量/经济） | 向量检索（OpenAI 兼容 / 本地 Hash）/ **BM25 关键词检索（零 token）** |
+| Rerank 模型 | Jina / Cohere / SiliconFlow 兼容接口，界面可配 |
 
 ## 许可证
 

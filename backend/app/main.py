@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
+from .bm25 import tokenizer_name as bm25_tokenizer_name
 from .db import init_db
 from .embedding import embedding_provider_name
 from .rerank import rerank_provider_name
@@ -37,6 +38,7 @@ def health():
         "status": "ok",
         "embedding_provider": embedding_provider_name(),
         "rerank_provider": rerank_provider_name(),
+        "bm25_tokenizer": bm25_tokenizer_name(),
     }
 
 

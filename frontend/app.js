@@ -43,8 +43,9 @@ async function loadDatasets(selectId = null) {
   for (const ds of data) {
     const el = document.createElement("div");
     el.className = "dataset-item" + (currentDataset?.id === ds.id ? " active" : "");
+    const modeLabel = ds.retrieval_mode === "bm25" ? "BM25" : "向量";
     el.innerHTML = `<div class="name">${esc(ds.name)}</div>
-      <div class="meta">${ds.document_count} 文档 · ${ds.segment_count} 分段</div>`;
+      <div class="meta">${ds.document_count} 文档 · ${ds.segment_count} 分段 · ${modeLabel}</div>`;
     el.onclick = () => selectDataset(ds.id);
     list.appendChild(el);
   }
@@ -61,6 +62,7 @@ async function selectDataset(id) {
   $("#setDesc").value = currentDataset.description || "";
   $("#setChunkSize").value = currentDataset.chunk_size;
   $("#setChunkOverlap").value = currentDataset.chunk_overlap;
+  $("#setMode").value = currentDataset.retrieval_mode || "vector";
   await loadDatasets();
   await loadDocuments();
 }
@@ -187,17 +189,17 @@ async function runHitTest() {
   const records = resp.records;
   const box = $("#hitResults");
   box.innerHTML = "";
-  if (resp.rerank) {
-    const tag = document.createElement("p");
-    tag.className = "muted";
-    tag.textContent = `Rerank 提供方：${resp.rerank_provider}（粗排 ${Math.min(records.length, body.top_k * 3)}+ 候选 → 精排 Top${body.top_k}）`;
-    box.appendChild(tag);
-  }
+  const modeTag = document.createElement("p");
+  modeTag.className = "muted";
+  modeTag.textContent = `召回方式：${resp.search_label}` +
+    (resp.rerank ? ` → Rerank（${resp.rerank_provider}）` : "");
+  box.appendChild(modeTag);
   if (!records.length) box.innerHTML += `<p class="muted">无命中结果</p>`;
   for (const r of records) {
     const el = document.createElement("div");
     el.className = "hit-card";
-    const vscore = r.vector_score != null ? `<span class="vscore">向量分 ${r.vector_score.toFixed(4)}</span>` : "";
+    const coarseLabel = resp.search_mode === "bm25" ? "BM25分" : "向量分";
+    const vscore = r.vector_score != null ? `<span class="vscore">${coarseLabel} ${r.vector_score.toFixed(4)}</span>` : "";
     el.innerHTML = `<div class="hit-head">
         <span class="muted">${esc(r.document_name)} · 分段 #${r.position + 1}</span>
         <span><span class="score">${r.score.toFixed(4)}</span>${vscore}</span>
@@ -231,6 +233,7 @@ $("#btnCreateDataset").onclick = async () => {
     description: $("#newDsDesc").value.trim(),
     chunk_size: parseInt($("#newDsChunkSize").value || "500"),
     chunk_overlap: parseInt($("#newDsChunkOverlap").value || "50"),
+    retrieval_mode: $("#newDsMode").value,
   });
   $("#datasetModal").classList.add("hidden");
   toast("已创建");
@@ -270,6 +273,7 @@ $("#btnSaveSettings").onclick = async () => {
     description: $("#setDesc").value.trim(),
     chunk_size: parseInt($("#setChunkSize").value || "500"),
     chunk_overlap: parseInt($("#setChunkOverlap").value || "50"),
+    retrieval_mode: $("#setMode").value,
   });
   toast("已保存");
   await selectDataset(currentDataset.id);

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nano Dify · 知识库</title>
-  <link rel="stylesheet" href="/static/style.css?v=0.4.0" />
+  <link rel="stylesheet" href="/static/style.css?v=0.5.0" />
 </head>
 <body>
   <div id="app">
@@ -76,7 +76,13 @@
             <label>描述 <textarea id="setDesc" rows="3"></textarea></label>
             <label>分段长度 <input type="number" id="setChunkSize" min="50" max="4000" /></label>
             <label>分段重叠 <input type="number" id="setChunkOverlap" min="0" max="500" /></label>
-            <p class="muted">分段参数只影响之后上传的文档；已有文档可单独「重新索引」。</p>
+            <label>召回方式
+              <select id="setMode">
+                <option value="vector">向量检索（语义匹配）</option>
+                <option value="bm25">关键词检索（BM25，零 token）</option>
+              </select>
+            </label>
+            <p class="muted">分段参数只影响之后上传的文档；切换召回方式后，已有文档需逐个「重新索引」。</p>
             <div class="form-actions">
               <button class="btn btn-primary" id="btnSaveSettings">保存</button>
               <button class="btn btn-danger" id="btnDeleteDataset">删除知识库</button>
@@ -154,6 +160,12 @@
         <label>描述 <textarea id="newDsDesc" rows="2" placeholder="可选"></textarea></label>
         <label>分段长度 <input type="number" id="newDsChunkSize" value="500" min="50" max="4000" /></label>
         <label>分段重叠 <input type="number" id="newDsChunkOverlap" value="50" min="0" max="500" /></label>
+        <label>召回方式
+          <select id="newDsMode">
+            <option value="vector">向量检索（语义匹配，消耗 embedding token）</option>
+            <option value="bm25">关键词检索（BM25，零 token 零网络）</option>
+          </select>
+        </label>
         <div class="form-actions">
           <button class="btn btn-primary" id="btnCreateDataset">创建</button>
         </div>
@@ -162,6 +174,6 @@
   </div>
 
   <div class="toast hidden" id="toast"></div>
-  <script src="/static/app.js?v=0.4.0"></script>
+  <script src="/static/app.js?v=0.5.0"></script>
 </body>
 </html>
